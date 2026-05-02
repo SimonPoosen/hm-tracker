@@ -377,7 +377,10 @@ canvas.pace-canvas { width: 100%; display: block; }
   display: grid; grid-template-columns: 22px 1fr;
   gap: 10px; align-items: start;
   padding: 8px 0; border-bottom: 1px solid var(--border);
-  cursor: pointer; user-select: none;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 .session-row:last-child { border-bottom: none; }
 .session-row.is-rest { cursor: default; }
@@ -497,6 +500,58 @@ canvas.pace-canvas { width: 100%; display: block; }
 
 /* plan view scrollable area */
 .plan-scroll { padding-bottom: 80px; }
+
+/* ═══ PACE PICKER ═══ */
+.pace-picker-wrap {
+  display: flex; align-items: center; gap: 8px;
+}
+.pace-picker-col {
+  flex: 1; position: relative;
+  height: 132px; overflow: hidden;
+  border-radius: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+}
+.pace-picker-col::before,
+.pace-picker-col::after {
+  content: ''; position: absolute;
+  left: 0; right: 0; height: 44px; z-index: 2; pointer-events: none;
+}
+.pace-picker-col::before { top: 0; background: linear-gradient(to bottom, var(--surface2), transparent); }
+.pace-picker-col::after  { bottom: 0; background: linear-gradient(to top, var(--surface2), transparent); }
+.pace-picker-scroll {
+  height: 100%; overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  padding: 44px 0;
+}
+.pace-picker-scroll::-webkit-scrollbar { display: none; }
+.pace-picker-item {
+  height: 44px; display: flex; align-items: center; justify-content: center;
+  scroll-snap-align: center;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.5rem; font-weight: 700; color: var(--muted);
+  transition: color 0.15s;
+}
+.pace-picker-item.selected { color: var(--text); }
+.pace-picker-sep {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.8rem; font-weight: 800; color: var(--dim);
+  padding-bottom: 2px; flex-shrink: 0;
+}
+.pace-picker-label {
+  font-family: 'DM Mono', monospace; font-size: 8px;
+  text-align: center; color: var(--dim);
+  letter-spacing: 0.08em; text-transform: uppercase;
+  margin-top: 4px;
+}
+.pace-picker-selector {
+  position: absolute; top: 50%; left: 0; right: 0;
+  height: 44px; transform: translateY(-50%);
+  border-top: 1px solid var(--border2);
+  border-bottom: 1px solid var(--border2);
+  pointer-events: none; z-index: 1;
+}
 </style>
 </head>
 <body>
@@ -954,6 +1009,9 @@ function daysToRace() {
 
 function getCurrentWeekIdx() {
   const now = new Date(); now.setHours(0,0,0,0);
+  const planStart = new Date(PLAN[0].startDate); planStart.setHours(0,0,0,0);
+  // Before plan starts — return -1 so callers can handle it
+  if (now < planStart) return -1;
   for (let i = PLAN.length - 1; i >= 0; i--) {
     const s = new Date(PLAN[i].startDate); s.setHours(0,0,0,0);
     if (now >= s) return i;
@@ -991,7 +1049,8 @@ function updateHeader() {
 }
 
 function buildPlan() {
-  const curWi = getCurrentWeekIdx();
+  const rawCurWi = getCurrentWeekIdx();
+  const curWi = rawCurWi === -1 ? -1 : rawCurWi; // -1 = before plan, no week highlighted
   const mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   let html = ''; let lastPh = -1;
   const phNames = {1:'Phase 1 — Base', 2:'Phase 2 — Build', 3:'Phase 3 — Race Specific'};
@@ -1022,7 +1081,7 @@ function buildPlan() {
 
     html += `<div class="week-card${isCur?' is-current':''}${allDone?' is-complete':''}" id="wk-${wi}">
       <div class="week-header" onclick="toggleWeek(${wi})">
-        <span class="week-num">Wk ${w.week}${isCur?'<span class="current-badge">Now</span>':''}</span>
+        <span class="week-num">Wk ${w.week}${(isCur && curWi >= 0)?'<span class="current-badge">Now</span>':''}</span>
         <span class="week-date">${ds}</span>
         <div class="week-check-summary">${dots}</div>
         ${w.tag?`<span class="week-tag">${w.tag}</span>`:''}
@@ -1039,8 +1098,8 @@ function buildPlan() {
 
       html += `<div class="session-row type-${s.type}${isR?' is-rest':''}" id="sr-${wi}-${si}"
         ontouchstart="${isR?'':'startLongPress('+wi+','+si+',event)'}"
-        ontouchend="${isR?'':'handleTap('+wi+','+si+')'}"
-        ontouchmove="cancelLongPress()"
+        ontouchend="${isR?'':'handleTap('+wi+','+si+',event)'}"
+        ontouchmove="cancelLongPress(event)"
         onclick="${isR?'':'handleClick('+wi+','+si+',event)'}"
         oncontextmenu="${isR?'':'return openModal('+wi+','+si+')'}">
         <div class="${cc}" id="chk-${wi}-${si}"></div>
@@ -1100,27 +1159,46 @@ function toggleWeek(wi) {
   c.classList.toggle('open', !o);
 }
 
-// ── Long-press detection ──────────────────────────────────
-// Short tap (<400ms)  → toggle checkbox
-// Long press (≥400ms) → open modal
+// ── Long-press + scroll detection ────────────────────────
+// Short tap (<400ms, <8px move)  → toggle checkbox
+// Long press (≥400ms, <8px move) → open modal
+// Scroll (>8px move)             → cancel everything
 let _lpTimer = null;
 let _lpFired = false;
+let _touchStartX = 0;
+let _touchStartY = 0;
+let _scrollCancelled = false;
 
 function startLongPress(wi, si, e) {
   _lpFired = false;
+  _scrollCancelled = false;
+  const t = e.touches[0];
+  _touchStartX = t.clientX;
+  _touchStartY = t.clientY;
   _lpTimer = setTimeout(() => {
+    if (_scrollCancelled) return;
     _lpFired = true;
     openModal(wi, si);
-  }, 400);
+  }, 420);
 }
 
-function cancelLongPress() {
+function cancelLongPress(e) {
+  if (e && e.type === 'touchmove') {
+    const t = e.touches[0];
+    const dx = Math.abs(t.clientX - _touchStartX);
+    const dy = Math.abs(t.clientY - _touchStartY);
+    if (dx > 8 || dy > 8) {
+      _scrollCancelled = true;
+      if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
+    }
+    return;
+  }
   if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
 }
 
-function handleTap(wi, si) {
-  cancelLongPress();
-  if (_lpFired) return; // long press already handled
+function handleTap(wi, si, e) {
+  if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
+  if (_lpFired || _scrollCancelled) return;
   doToggle(wi, si);
 }
 
@@ -1150,17 +1228,77 @@ function doToggle(wi, si) {
   const card = document.getElementById(`wk-${wi}`);
   if (card) card.classList.toggle('is-complete', allDone);
   if (allDone && dat.done) launchConfetti();
+  // Auto-update weekly actual km from ticked sessions
+  const autoKm = calcWeekActualKm(wi);
+  if (autoKm !== null) {
+    state[`wkm_${wi}`] = String(autoKm);
+  } else {
+    state[`wkm_${wi}`] = null;
+  }
+  save();
   updateHeader();
+  // Refresh km display in plan week header
+  const volEl = document.querySelector(`#wk-${wi} .week-vol`);
+  if (volEl) {
+    const planned = PLAN[wi].vol;
+    const actKm = state[`wkm_${wi}`];
+    volEl.innerHTML = `${planned} km${actKm ? `<span class="week-actual-km"> · ${actKm}</span>` : ''}`;
+  }
 }
 
 function jumpToCurrent() {
-  const wi = getCurrentWeekIdx();
+  const rawWi = getCurrentWeekIdx();
+  // Before plan starts — land on Week 1, Monday
+  const wi = rawWi === -1 ? 0 : rawWi;
   const el = document.getElementById(`wk-${wi}`);
   if (!el) return;
+
+  // Open the week
   const l = document.getElementById(`sl-${wi}`);
   const c = document.getElementById(`chv-${wi}`);
   if (l && !l.classList.contains('open')) { l.classList.add('open'); c && c.classList.add('open'); }
-  setTimeout(() => el.scrollIntoView({ behavior:'smooth', block:'start' }), 50);
+
+  // If before plan starts, land on first session of week 1
+  if (rawWi === -1) {
+    setTimeout(() => {
+      const firstRow = document.getElementById(`sr-0-0`);
+      if (firstRow) firstRow.scrollIntoView({ behavior:'smooth', block:'center' });
+    }, 60);
+    return;
+  }
+
+  // Find today's day of week (0=Sun,1=Mon...6=Sat)
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const todayName = dayNames[new Date().getDay()];
+  const week = PLAN[wi];
+
+  // Find the session row matching today, or the next unticked one, or fall back to week header
+  let targetEl = null;
+  // First try: today's session
+  week.sessions.forEach((s, si) => {
+    if (s.day === todayName && !targetEl) {
+      targetEl = document.getElementById(`sr-${wi}-${si}`);
+    }
+  });
+  // Second try: next unticked session from today forward
+  if (!targetEl) {
+    const todayIdx = dayNames.indexOf(todayName);
+    const orderedDays = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    const todayOrd = orderedDays.indexOf(todayName);
+    let found = false;
+    orderedDays.slice(todayOrd).forEach(day => {
+      if (found) return;
+      week.sessions.forEach((s, si) => {
+        if (found || s.day !== day || s.type === 'rest' || isChecked(wi, si)) return;
+        targetEl = document.getElementById(`sr-${wi}-${si}`);
+        found = true;
+      });
+    });
+  }
+  // Fall back to week header
+  if (!targetEl) targetEl = el;
+
+  setTimeout(() => targetEl.scrollIntoView({ behavior:'smooth', block:'center' }), 60);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1185,13 +1323,13 @@ function openModal(wi, si) {
   </div>`;
 
   if (s.logType === 'easy') {
-    body += `<div class="modal-field"><label>Avg pace (whole run)</label><input type="text" id="mAvgPace" placeholder="e.g. 5:08" value="${escHtml(dat.avgPace||'')}"></div>`;
+    body += buildPicker('mAvgPace', 4, 6, dat.avgPace||null, 'Avg pace (whole run)');
   }
   if (s.logType === 'interval') {
-    body += `<div class="modal-field"><label>Rep pace (avg across reps)</label><input type="text" id="mRepPace" placeholder="e.g. 3:51" value="${escHtml(dat.repPace||'')}"></div>`;
+    body += buildPicker('mRepPace', 3, 5, dat.repPace||null, 'Rep pace (avg across reps)');
   }
   if (s.logType === 'tempo') {
-    body += `<div class="modal-field"><label>Tempo block pace</label><input type="text" id="mTempoPace" placeholder="e.g. 4:13" value="${escHtml(dat.tempoPace||'')}"></div>`;
+    body += buildPicker('mTempoPace', 3, 5, dat.tempoPace||null, 'Tempo block pace');
   }
   if (s.logType === 'hm') {
     body += `<div class="modal-field">
@@ -1201,16 +1339,24 @@ function openModal(wi, si) {
         <button class="outcome-btn${dat.hmOutcome==='close'?' selected-close':''}" onclick="selectOutcome('close')">≈ Close</button>
         <button class="outcome-btn${dat.hmOutcome==='missed'?' selected-missed':''}" onclick="selectOutcome('missed')">✗ Missed</button>
       </div>
-    </div>
-    <div class="modal-field"><label>HM block pace (optional)</label><input type="text" id="mHmPace" placeholder="e.g. 4:18" value="${escHtml(dat.hmPace||'')}"></div>`;
+    </div>`;
+    body += buildPicker('mHmPace', 3, 5, dat.hmPace||null, 'HM block pace (optional)');
   }
   if (s.logType === 'mixed_long') {
-    body += `<div class="modal-field"><label>Easy section avg pace</label><input type="text" id="mEasyPace" placeholder="e.g. 5:05" value="${escHtml(dat.easyPace||'')}"></div>`;
-    body += `<div class="modal-field"><label>Fast finish section pace</label><input type="text" id="mFastPace" placeholder="e.g. 4:22" value="${escHtml(dat.fastPace||'')}"></div>`;
+    body += buildPicker('mEasyPace', 4, 6, dat.easyPace||null, 'Easy section avg pace');
+    body += buildPicker('mFastPace', 3, 5, dat.fastPace||null, 'Fast finish section pace');
   }
 
   document.getElementById('modalBody').innerHTML = body;
   document.getElementById('modalOverlay').classList.add('open');
+  // Init scroll pickers after DOM is set
+  requestAnimationFrame(() => {
+    if (s.logType === 'easy')       initPicker('mAvgPace',  4, dat.avgPace||null);
+    if (s.logType === 'interval')   initPicker('mRepPace',  3, dat.repPace||null);
+    if (s.logType === 'tempo')      initPicker('mTempoPace',3, dat.tempoPace||null);
+    if (s.logType === 'hm')        { initPicker('mHmPace',  3, dat.hmPace||null); }
+    if (s.logType === 'mixed_long'){ initPicker('mEasyPace',4, dat.easyPace||null); initPicker('mFastPace',3, dat.fastPace||null); }
+  });
   return false;
 }
 
@@ -1236,19 +1382,19 @@ function saveModal() {
   dat.done = dat.done || false;
   const note = document.getElementById('mNote');
   if (note) dat.note = note.value.trim();
-  const avg = document.getElementById('mAvgPace');
-  if (avg) dat.avgPace = avg.value.trim();
-  const rep = document.getElementById('mRepPace');
-  if (rep) dat.repPace = rep.value.trim();
-  const tmp = document.getElementById('mTempoPace');
-  if (tmp) dat.tempoPace = tmp.value.trim();
-  const hmp = document.getElementById('mHmPace');
-  if (hmp) dat.hmPace = hmp.value.trim();
+  const avg = getPickerValue('mAvgPace');
+  if (avg !== null) dat.avgPace = avg;
+  const rep = getPickerValue('mRepPace');
+  if (rep !== null) dat.repPace = rep;
+  const tmp = getPickerValue('mTempoPace');
+  if (tmp !== null) dat.tempoPace = tmp;
+  const hmp = getPickerValue('mHmPace');
+  if (hmp !== null) dat.hmPace = hmp;
   if (selectedOutcome) dat.hmOutcome = selectedOutcome;
-  const ep = document.getElementById('mEasyPace');
-  if (ep) dat.easyPace = ep.value.trim();
-  const fp = document.getElementById('mFastPace');
-  if (fp) dat.fastPace = fp.value.trim();
+  const ep = getPickerValue('mEasyPace');
+  if (ep !== null) dat.easyPace = ep;
+  const fp = getPickerValue('mFastPace');
+  if (fp !== null) dat.fastPace = fp;
   state[skey(modalWi,modalSi)] = dat;
   save();
 
@@ -1385,10 +1531,10 @@ function renderWeeklyKm() {
           <div class="wkr-bar-planned" style="width:${planPct}%"></div>
           <div class="wkr-bar-actual" style="width:${actPct}%;background:${actColor}"></div>
         </div>
-        <span class="wkr-actual-val">${actual !== null ? actual + ' km' : '—'}</span>
+        <span class="wkr-actual-val" style="${actual !== null && !state['wkm_manual_'+wi] ? 'color:var(--ph2)' : ''}">${actual !== null ? actual + ' km' : '—'}</span>
       </div>
       <div class="wkr-input-wrap" id="kminput-${wi}">
-        <input type="text" class="wkr-input" id="kmval-${wi}" placeholder="km run" inputmode="decimal" value="${actual !== null ? actual : ''}">
+        <input type="text" class="wkr-input" id="kmval-${wi}" placeholder="${actual !== null && !state['wkm_manual_'+wi] ? 'auto: ' + actual : 'override km'}" inputmode="decimal" value="${state['wkm_manual_'+wi] ? actual : ''}">
         <button class="mini-btn primary" onclick="saveKm(${wi})">Save</button>
         <button class="mini-btn" onclick="closeKmInput(${wi})">×</button>
       </div>
@@ -1406,11 +1552,18 @@ function openKmInput(wi) {
 function closeKmInput(wi) { document.getElementById(`kminput-${wi}`).classList.remove('open'); }
 function saveKm(wi) {
   const val = document.getElementById(`kmval-${wi}`).value.trim();
-  state[`wkm_${wi}`] = val || null;
+  if (val) {
+    state[`wkm_${wi}`] = val;
+    state[`wkm_manual_${wi}`] = true; // mark as manual override
+  } else {
+    // Clear manual override — revert to auto
+    state[`wkm_${wi}`] = calcWeekActualKm(wi) ? String(calcWeekActualKm(wi)) : null;
+    delete state[`wkm_manual_${wi}`];
+  }
   save();
   closeKmInput(wi);
   renderWeeklyKm();
-  buildPlan(); // refresh km display in plan header
+  buildPlan();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1588,9 +1741,124 @@ function launchConfetti() {
   }
 }
 
+
+// ═══════════════════════════════════════════════════════════
+// PACE PICKER
+// ═══════════════════════════════════════════════════════════
+
+function buildPicker(id, minVal, maxVal, initialVal, label) {
+  // initialVal like "4:16" or null
+  let initMin = minVal, initSec = 0;
+  if (initialVal) {
+    const m = initialVal.match(/^(\d+):(\d{2})$/);
+    if (m) { initMin = parseInt(m[1]); initSec = parseInt(m[2]); }
+  }
+
+  const mins = [];
+  for (let i = minVal; i <= maxVal; i++) mins.push(i);
+  const secs = [];
+  for (let i = 0; i <= 59; i++) secs.push(i);
+
+  function colHtml(vals, initVal, colId) {
+    const items = vals.map(v =>
+      `<div class="pace-picker-item" data-val="${v}">${String(v).padStart(2,'0')}</div>`
+    ).join('');
+    return `<div class="pace-picker-col" id="${colId}">
+      <div class="pace-picker-selector"></div>
+      <div class="pace-picker-scroll" id="${colId}-scroll">${items}</div>
+    </div>`;
+  }
+
+  const html = `<div>
+    <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">${label}</div>
+    <div class="pace-picker-wrap">
+      ${colHtml(mins, initMin, id+'-min')}
+      <span class="pace-picker-sep">:</span>
+      ${colHtml(secs, initSec, id+'-sec')}
+    </div>
+    <div style="display:flex;gap:4px;margin-top:4px;">
+      <div class="pace-picker-label" style="flex:1">min</div>
+      <div style="width:20px"></div>
+      <div class="pace-picker-label" style="flex:1">sec</div>
+    </div>
+  </div>`;
+  return html;
+}
+
+function initPicker(id, minVal, initVal) {
+  let initMin = minVal, initSec = 0;
+  if (initVal) {
+    const m = initVal.match(/^(\d+):(\d{2})$/);
+    if (m) { initMin = parseInt(m[1]); initSec = parseInt(m[2]); }
+  }
+  ['min','sec'].forEach(part => {
+    const scroll = document.getElementById(`${id}-${part}-scroll`);
+    if (!scroll) return;
+    const target = part === 'min' ? initMin : initSec;
+    const items = scroll.querySelectorAll('.pace-picker-item');
+    items.forEach((item, idx) => {
+      if (parseInt(item.dataset.val) === target) {
+        // Scroll to centre this item (each item is 44px, padding-top is 44px)
+        scroll.scrollTop = idx * 44;
+      }
+    });
+    // Highlight selected on scroll
+    scroll.addEventListener('scroll', () => updatePickerHighlight(scroll), { passive: true });
+    updatePickerHighlight(scroll);
+  });
+}
+
+function updatePickerHighlight(scroll) {
+  const centreIdx = Math.round(scroll.scrollTop / 44);
+  scroll.querySelectorAll('.pace-picker-item').forEach((item, idx) => {
+    item.classList.toggle('selected', idx === centreIdx);
+  });
+}
+
+function getPickerValue(id) {
+  const ms = document.getElementById(`${id}-min-scroll`);
+  const ss = document.getElementById(`${id}-sec-scroll`);
+  if (!ms || !ss) return null;
+  const mi = Math.round(ms.scrollTop / 44);
+  const si = Math.round(ss.scrollTop / 44);
+  const mItems = ms.querySelectorAll('.pace-picker-item');
+  const sItems = ss.querySelectorAll('.pace-picker-item');
+  const minVal = mItems[mi] ? parseInt(mItems[mi].dataset.val) : null;
+  const secVal = sItems[si] ? parseInt(sItems[si].dataset.val) : null;
+  if (minVal === null || secVal === null) return null;
+  return `${minVal}:${String(secVal).padStart(2,'0')}`;
+}
+
+
+function parseSessionKm(name) {
+  // Match leading number like "8 km", "10 km", "14 km", "30 km" etc.
+  const m = name.match(/^(\d+(?:\.\d+)?)\s*km/i);
+  return m ? parseFloat(m[1]) : 0;
+}
+
+function calcWeekActualKm(wi) {
+  // Sum km of all ticked non-rest sessions in the week
+  const w = PLAN[wi];
+  let total = 0;
+  w.sessions.forEach((s, si) => {
+    if (s.type === 'rest') return;
+    if (!isChecked(wi, si)) return;
+    total += parseSessionKm(s.name);
+  });
+  return total > 0 ? Math.round(total * 10) / 10 : null;
+}
 // ═══════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════
+// Re-calculate auto km for all weeks on load (catches any state from before this feature)
+PLAN.forEach((w, wi) => {
+  if (!state[`wkm_manual_${wi}`]) {
+    const auto = calcWeekActualKm(wi);
+    state[`wkm_${wi}`] = auto !== null ? String(auto) : null;
+  }
+});
+save();
+
 buildPlan();
 updateHeader();
 initRaceChecks();
