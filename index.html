@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="1:30 Plan">
@@ -461,9 +461,10 @@ canvas.pace-canvas { width: 100%; display: block; }
   width: 100%; background: var(--surface2);
   border: 1px solid var(--border2); border-radius: 8px;
   padding: 10px 12px; color: var(--text);
-  font-family: 'DM Mono', monospace; font-size: 12px;
+  font-family: 'DM Mono', monospace; font-size: 16px;
   resize: none; line-height: 1.5;
 }
+.wkr-input { font-size: 16px !important; }
 .modal-field textarea:focus, .modal-field input[type="text"]:focus { outline: none; border-color: var(--accent); }
 .outcome-btns { display: flex; gap: 8px; }
 .outcome-btn {
@@ -765,9 +766,12 @@ canvas.pace-canvas { width: 100%; display: block; }
       <div class="modal-session-type" id="modalType"></div>
     </div>
     <div class="modal-body" id="modalBody"></div>
-    <div class="modal-footer">
-      <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>
-      <button class="modal-btn save" onclick="saveModal()">Save</button>
+    <div class="modal-footer" style="flex-direction:column; gap:8px;">
+      <div style="display:flex; gap:8px; width:100%;">
+        <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>
+        <button class="modal-btn save" onclick="saveModal()">Save</button>
+      </div>
+      <button class="modal-btn" style="background:transparent; border:1px solid var(--border2); color:var(--race); font-size:10px; padding:8px;" onclick="clearSessionLog()">Clear logged data</button>
     </div>
   </div>
 </div>
@@ -1368,6 +1372,24 @@ function selectOutcome(o) {
   event.target.className = `outcome-btn selected-${o}`;
 }
 
+
+function clearSessionLog() {
+  if (modalWi === null) return;
+  const dat = state[skey(modalWi, modalSi)] || {};
+  const wasDone = dat.done; // preserve tick state
+  state[skey(modalWi, modalSi)] = { done: wasDone };
+  save();
+  // Refresh the session row display
+  const s = PLAN[modalWi].sessions[modalSi];
+  const row = document.getElementById(`sr-${modalWi}-${modalSi}`);
+  if (row) {
+    const right = row.querySelector('.session-right');
+    if (right) {
+      right.querySelectorAll('.session-note-display,.session-logged-pace').forEach(el => el.remove());
+    }
+  }
+  closeModal();
+}
 function closeModal() {
   document.getElementById('modalOverlay').classList.remove('open');
   modalWi = null; modalSi = null; selectedOutcome = null;
