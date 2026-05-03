@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="1:30 Plan">
 <title>1:30 Half Marathon</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxODAgMTgwIj48cmVjdCB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgcng9IjQwIiBmaWxsPSIjMGQwZDBkIi8+PGNpcmNsZSBjeD0iMTA4IiBjeT0iMzgiIHI9IjE2IiBmaWxsPSIjZjBlZGU4Ii8+PGxpbmUgeDE9IjEwOCIgeTE9IjU0IiB4Mj0iOTAiIHkyPSIxMDAiIHN0cm9rZT0iI2YwZWRlOCIgc3Ryb2tlLXdpZHRoPSIxMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PGxpbmUgeDE9Ijk5IiB5MT0iNzIiIHgyPSI2OCIgeTI9IjkwIiBzdHJva2U9IiNmMGVkZTgiIHN0cm9rZS13aWR0aD0iOSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PGxpbmUgeDE9Ijk5IiB5MT0iNzAiIHgyPSIxMjQiIHkyPSI1OCIgc3Ryb2tlPSIjZjBlZGU4IiBzdHJva2Utd2lkdGg9IjkiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxsaW5lIHgxPSI5MCIgeTE9IjEwMCIgeDI9IjYyIiB5Mj0iMTQ4IiBzdHJva2U9IiNmMGVkZTgiIHN0cm9rZS13aWR0aD0iMTAiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxsaW5lIHgxPSI2MiIgeTE9IjE0OCIgeDI9IjQyIiB5Mj0iMTQ4IiBzdHJva2U9IiNmNTllMGIiIHN0cm9rZS13aWR0aD0iMTAiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxsaW5lIHgxPSI5MCIgeTE9IjEwMCIgeDI9IjExMiIgeTI9IjEzOCIgc3Ryb2tlPSIjZjBlZGU4IiBzdHJva2Utd2lkdGg9IjEwIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48bGluZSB4MT0iMTEyIiB5MT0iMTM4IiB4Mj0iMTM4IiB5Mj0iMTE4IiBzdHJva2U9IiNmNTllMGIiIHN0cm9rZS13aWR0aD0iMTAiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvc3ZnPg==">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -554,6 +555,52 @@ canvas.pace-canvas { width: 100%; display: block; }
   border-bottom: 1px solid var(--border2);
   pointer-events: none; z-index: 1;
 }
+
+/* ═══ HR PICKER ═══ */
+.hr-picker-wrap {
+  display: flex; align-items: center; gap: 8px;
+}
+.hr-picker-col {
+  flex: 1; position: relative;
+  height: 132px; overflow: hidden;
+  border-radius: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+}
+.hr-picker-col::before,
+.hr-picker-col::after {
+  content: ''; position: absolute;
+  left: 0; right: 0; height: 44px; z-index: 2; pointer-events: none;
+}
+.hr-picker-col::before { top: 0; background: linear-gradient(to bottom, var(--surface2), transparent); }
+.hr-picker-col::after  { bottom: 0; background: linear-gradient(to top, var(--surface2), transparent); }
+.hr-picker-scroll {
+  height: 100%; overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  padding: 44px 0;
+}
+.hr-picker-scroll::-webkit-scrollbar { display: none; }
+.hr-picker-item {
+  height: 44px; display: flex; align-items: center; justify-content: center;
+  scroll-snap-align: center;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.5rem; font-weight: 700; color: var(--muted);
+  transition: color 0.15s;
+}
+.hr-picker-item.selected { color: var(--race); }
+.hr-picker-selector {
+  position: absolute; top: 50%; left: 0; right: 0;
+  height: 44px; transform: translateY(-50%);
+  border-top: 1px solid var(--border2);
+  border-bottom: 1px solid var(--border2);
+  pointer-events: none; z-index: 1;
+}
+.hr-unit {
+  font-family: 'DM Mono', monospace; font-size: 10px;
+  color: var(--race); opacity: 0.6; margin-top: 4px;
+  text-align: center; letter-spacing: 0.08em; text-transform: uppercase;
+}
 </style>
 </head>
 <body>
@@ -666,6 +713,16 @@ canvas.pace-canvas { width: 100%; display: block; }
         <div class="cl-item"><div class="cl-dot" style="background:var(--ph1)"></div>Hit</div>
         <div class="cl-item"><div class="cl-dot" style="background:var(--accent)"></div>Close</div>
         <div class="cl-item"><div class="cl-dot" style="background:var(--race)"></div>Missed</div>
+      </div>
+    </div>
+    <div class="chart-section">
+      <div class="chart-title">Avg heart rate</div>
+      <div class="chart-sub">All sessions · watch it drop as fitness builds</div>
+      <div class="chart-wrap"><canvas class="pace-canvas" id="hrCanvas" height="140"></canvas></div>
+      <div class="chart-legend">
+        <div class="cl-item"><div class="cl-dot" style="background:var(--race)"></div>Easy / long</div>
+        <div class="cl-item"><div class="cl-dot" style="background:var(--tempo)"></div>Tempo / HM</div>
+        <div class="cl-item"><div class="cl-dot" style="background:var(--interval)"></div>Intervals</div>
       </div>
     </div>
     <div class="chart-section">
@@ -1132,6 +1189,7 @@ function renderLoggedData(dat, logType) {
   let parts = [];
   if (dat.note) parts.push(`<div class="session-note-display">📝 ${escHtml(dat.note)}</div>`);
   const tags = [];
+  if (dat.avgHr) tags.push(`<span class="pace-tag" style="color:var(--race);border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.08);">♥ ${dat.avgHr} bpm</span>`);
   if (logType === 'easy' && dat.avgPace) tags.push(`<span class="pace-tag">avg ${escHtml(dat.avgPace)}/km</span>`);
   if (logType === 'interval' && dat.repPace) tags.push(`<span class="pace-tag">reps ${escHtml(dat.repPace)}/km</span>`);
   if (logType === 'tempo' && dat.tempoPace) tags.push(`<span class="pace-tag">tempo ${escHtml(dat.tempoPace)}/km</span>`);
@@ -1327,6 +1385,11 @@ function openModal(wi, si) {
     <textarea id="mNote" rows="3" placeholder="e.g. Legs heavy, humid, held the pace well in rep 3...">${escHtml(dat.note||'')}</textarea>
   </div>`;
 
+  // HR field (all non-rest sessions)
+  if (s.type !== 'rest') {
+    body += buildHrPicker('mAvgHr', dat.avgHr || null, 'Avg heart rate');
+  }
+
   if (s.logType === 'easy') {
     body += buildPicker('mAvgPace', 4, 6, dat.avgPace||null, 'Avg pace (whole run)');
   }
@@ -1361,6 +1424,7 @@ function openModal(wi, si) {
     if (s.logType === 'tempo')      initPicker('mTempoPace',3, dat.tempoPace||null);
     if (s.logType === 'hm')        { initPicker('mHmPace',  3, dat.hmPace||null); }
     if (s.logType === 'mixed_long'){ initPicker('mEasyPace',4, dat.easyPace||null); initPicker('mFastPace',3, dat.fastPace||null); }
+    if (s.type !== 'rest') initHrPicker('mAvgHr', dat.avgHr || null);
   });
   return false;
 }
@@ -1414,6 +1478,8 @@ function saveModal() {
   const hmp = getPickerValue('mHmPace');
   if (hmp !== null) dat.hmPace = hmp;
   if (selectedOutcome) dat.hmOutcome = selectedOutcome;
+  const hr = getHrValue('mAvgHr');
+  if (hr !== null) dat.avgHr = hr;
   const ep = getPickerValue('mEasyPace');
   if (ep !== null) dat.easyPace = ep;
   const fp = getPickerValue('mFastPace');
@@ -1608,6 +1674,68 @@ function renderCharts() {
   drawPaceChart('tempoCanvas', collectData('tempo'), '#3b82f6', 250, 258, true, null);
   drawHmChart();
   drawPaceChart('easyCanvas', collectData('easy'), '#6b7280', 295, 320, true, null);
+  drawHrChart();
+}
+
+function collectHrData() {
+  const typeColor = { easy:'#ef4444', long:'#ef4444', tempo:'#3b82f6', interval:'#22c55e', hm:'#3b82f6', mixed_long:'#ef4444', race:'#ef4444' };
+  const pts = [];
+  PLAN.forEach((w, wi) => {
+    w.sessions.forEach((s, si) => {
+      if (s.type === 'rest') return;
+      const dat = getSessionData(wi, si);
+      if (!dat.avgHr) return;
+      pts.push({ week: w.week, hr: dat.avgHr, color: typeColor[s.logType] || '#ef4444', day: s.day });
+    });
+  });
+  return pts;
+}
+
+function drawHrChart() {
+  const canvas = document.getElementById('hrCanvas');
+  if (!canvas) return;
+  const pts = collectHrData();
+  const W = canvas.parentElement.clientWidth || 300;
+  canvas.width = W; canvas.height = 140;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, 140);
+
+  const pad = { l:36, r:12, t:10, b:24 };
+  const cW = W - pad.l - pad.r; const cH = 140 - pad.t - pad.b;
+
+  if (pts.length === 0) {
+    ctx.fillStyle = '#444'; ctx.font = '10px DM Mono,monospace';
+    ctx.fillText('No HR data yet — log sessions to see your progression', pad.l, pad.t + cH/2);
+    return;
+  }
+
+  const allHr = pts.map(p => p.hr);
+  const minH = Math.min(...allHr) - 8;
+  const maxH = Math.max(...allHr) + 8;
+  const range = maxH - minH;
+
+  function toY(hr) { return pad.t + ((maxH - hr) / range) * cH; }
+  function toX(week) { return pad.l + ((week - 1) / 20) * cW; }
+
+  // Reference zone lines
+  [140, 160, 180].forEach(hr => {
+    ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(pad.l, toY(hr)); ctx.lineTo(W-pad.r, toY(hr)); ctx.stroke();
+    ctx.fillStyle = '#444'; ctx.font = '8px DM Mono,monospace'; ctx.textAlign = 'right';
+    ctx.fillText(hr, pad.l-4, toY(hr)+3);
+  });
+
+  // Dots
+  ctx.textAlign = 'center';
+  pts.forEach(p => {
+    const x = toX(p.week);
+    const y = toY(p.hr);
+    ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI*2);
+    ctx.fillStyle = p.color; ctx.fill();
+    ctx.fillStyle = '#555'; ctx.font = '8px DM Mono,monospace';
+    ctx.fillText('W'+p.week, x, 140-6);
+  });
+  ctx.textAlign = 'left';
 }
 
 function collectData(logType) {
@@ -1764,6 +1892,61 @@ function launchConfetti() {
   }
 }
 
+
+
+// ═══════════════════════════════════════════════════════════
+// HR PICKER
+// ═══════════════════════════════════════════════════════════
+
+function buildHrPicker(id, initVal, label) {
+  const values = [];
+  for (let i = 100; i <= 210; i++) values.push(i);
+  const init = initVal ? parseInt(initVal) : 155;
+
+  const items = values.map(v =>
+    `<div class="hr-picker-item" data-val="${v}">${v}</div>`
+  ).join('');
+
+  return `<div>
+    <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">${label}</div>
+    <div class="hr-picker-wrap">
+      <div class="hr-picker-col" id="${id}">
+        <div class="hr-picker-selector"></div>
+        <div class="hr-picker-scroll" id="${id}-scroll">${items}</div>
+      </div>
+    </div>
+    <div class="hr-unit">bpm · max 210</div>
+  </div>`;
+}
+
+function initHrPicker(id, initVal) {
+  const init = initVal ? parseInt(initVal) : 155;
+  const scroll = document.getElementById(`${id}-scroll`);
+  if (!scroll) return;
+  const items = scroll.querySelectorAll('.hr-picker-item');
+  items.forEach((item, idx) => {
+    if (parseInt(item.dataset.val) === init) {
+      scroll.scrollTop = idx * 44;
+    }
+  });
+  scroll.addEventListener('scroll', () => {
+    const centreIdx = Math.round(scroll.scrollTop / 44);
+    scroll.querySelectorAll('.hr-picker-item').forEach((item, idx) => {
+      item.classList.toggle('selected', idx === centreIdx);
+    });
+  }, { passive: true });
+  // Initial highlight
+  const centreIdx = Math.round(scroll.scrollTop / 44);
+  items.forEach((item, idx) => item.classList.toggle('selected', idx === centreIdx));
+}
+
+function getHrValue(id) {
+  const scroll = document.getElementById(`${id}-scroll`);
+  if (!scroll) return null;
+  const idx = Math.round(scroll.scrollTop / 44);
+  const items = scroll.querySelectorAll('.hr-picker-item');
+  return items[idx] ? parseInt(items[idx].dataset.val) : null;
+}
 
 // ═══════════════════════════════════════════════════════════
 // PACE PICKER
