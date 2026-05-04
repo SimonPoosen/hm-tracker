@@ -1765,10 +1765,10 @@ function renderWeeklyKm() {
           <div class="wkr-bar-planned" style="width:${planPct}%"></div>
           <div class="wkr-bar-actual" style="width:${actPct}%;background:${actColor}"></div>
         </div>
-        <span class="wkr-actual-val" style="${actual !== null && !state['wkm_manual_'+wi] ? 'color:var(--ph2)' : ''}">${actual !== null ? actual + ' km' : '—'}</span>
+        <span wkr-actual-val" id="wkr-val-${wi}">${actual !== null ? actual + ' km' : '—'}</span>
       </div>
       <div class="wkr-input-wrap" id="kminput-${wi}">
-        <input type="text" class="wkr-input" id="kmval-${wi}" placeholder="${actual !== null && !state['wkm_manual_'+wi] ? 'auto: ' + actual : 'override km'}" inputmode="decimal" value="${state['wkm_manual_'+wi] ? actual : ''}">
+        <input type="text" class="wkr-input" id        <input type="text" class="wkr-input" id="kmval-${wi}" placeholder="override km" inputmode="decimal" value="">
         <button class="mini-btn primary" onclick="saveKm(${wi})">Save</button>
         <button class="mini-btn" onclick="closeKmInput(${wi})">×</button>
       </div>
@@ -1776,6 +1776,13 @@ function renderWeeklyKm() {
   }
   if (!html) html = `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);">Weekly km tracking will appear here as you progress.</div>`;
   document.getElementById('weeklyKmRows').innerHTML = html;
+  // Colour auto vs manual values after render
+  for (let i = 0; i <= Math.min(getCurrentWeekIdx() < 0 ? 0 : getCurrentWeekIdx(), PLAN.length-1); i++) {
+    const el = document.getElementById('wkr-val-'+i);
+    if (el && state['wkm_' + i] && !state['wkm_manual_' + i]) {
+      el.style.color = 'var(--ph2)'; // blue = auto-filled
+    }
+  }
 }
 
 function openKmInput(wi) {
@@ -2267,7 +2274,7 @@ function importData(event) {
       showBackupStatus(`✓ Backup from ${exportDate} restored successfully`, 'var(--ph1)');
 
     } catch(err) {
-      showBackupStatus('✗ Could not read file — make sure it's a valid backup', 'var(--race)');
+      showBackupStatus("✗ Could not read file — make sure it's a valid backup", "var(--race)");
     }
     event.target.value = ''; // reset input
   };
