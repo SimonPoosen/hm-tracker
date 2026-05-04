@@ -702,6 +702,27 @@ canvas.pace-canvas { width: 100%; display: block; }
       <span class="section-label">Planned vs actual km — tap to enter</span>
       <div id="weeklyKmRows"></div>
     </div>
+
+    <!-- Backup / Restore -->
+    <div class="weekly-km-section" style="border-top:1px solid var(--border); padding-top:16px;">
+      <span class="section-label">Data backup</span>
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);line-height:1.6;margin-bottom:12px;">
+        Your data lives in Safari on this device. Export regularly to keep a backup — save it to iCloud, Notes, or email it to yourself.
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <button onclick="exportData()" style="flex:1;padding:11px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);cursor:pointer;">
+          ↑ Export backup
+        </button>
+        <button onclick="document.getElementById('importFile').click()" style="flex:1;padding:11px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);cursor:pointer;">
+          ↓ Import backup
+        </button>
+        <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+      </div>
+      <div id="backupStatus" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);min-height:16px;"></div>
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--dim);margin-top:8px;line-height:1.6;">
+        Last export: <span id="lastExportDate">never</span>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1634,6 +1655,7 @@ function renderCountdown() {
   renderWeeklyKm();
   drawReadinessChart();
   drawHrStatsDashboard();
+  updateLastExportDate();
 }
 
 function renderReadiness() {
@@ -2176,6 +2198,97 @@ function calcWeekActualKm(wi) {
   });
   return total > 0 ? Math.round(total * 10) / 10 : null;
 }
+
+// ═══════════════════════════════════════════════════════════
+// BACKUP — EXPORT / IMPORT
+// ═══════════════════════════════════════════════════════════
+
+function exportData() {
+  const backup = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    appName: '1:30 HM Tracker',
+    data: state
+  };
+
+  const json = JSON.stringify(backup, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+
+  // Create download link
+  const a = document.createElement('a');
+  const date = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `hm-tracker-backup-${date}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  // Record last export time
+  state['_lastExport'] = new Date().toISOString();
+  save();
+  updateLastExportDate();
+  showBackupStatus('✓ Backup exported — save it to iCloud or email it to yourself', 'var(--ph1)');
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const backup = JSON.parse(e.target.result);
+
+      // Validate
+      if (!backup.version || !backup.data) {
+        showBackupStatus('✗ Invalid backup file', 'var(--race)');
+        return;
+      }
+
+      // Confirm before overwriting
+      const sessions = Object.keys(backup.data).filter(k => k.startsWith('w')).length;
+      const exportDate = backup.exportedAt ? backup.exportedAt.slice(0,10) : 'unknown date';
+
+      if (!confirm(`Restore backup from ${exportDate}?\n\nThis will replace all current data (${sessions} entries logged).\n\nThis cannot be undone.`)) {
+        event.target.value = '';
+        return;
+      }
+
+      // Restore
+      state = backup.data;
+      save();
+
+      // Rebuild UI
+      buildPlan();
+      updateHeader();
+      renderCountdown();
+      showBackupStatus(`✓ Backup from ${exportDate} restored successfully`, 'var(--ph1)');
+
+    } catch(err) {
+      showBackupStatus('✗ Could not read file — make sure it's a valid backup', 'var(--race)');
+    }
+    event.target.value = ''; // reset input
+  };
+  reader.readAsText(file);
+}
+
+function showBackupStatus(msg, color) {
+  const el = document.getElementById('backupStatus');
+  if (!el) return;
+  el.style.color = color || 'var(--muted)';
+  el.textContent = msg;
+  setTimeout(() => { if (el) el.textContent = ''; }, 4000);
+}
+
+function updateLastExportDate() {
+  const el = document.getElementById('lastExportDate');
+  if (!el) return;
+  const ts = state['_lastExport'];
+  el.textContent = ts ? ts.slice(0,10) : 'never';
+}
+
 // ═══════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════
@@ -2191,6 +2304,7 @@ save();
 buildPlan();
 updateHeader();
 initRaceChecks();
+updateLastExportDate();
 
 // Auto-show race day view on race day
 if (isRaceDay()) showView('race');
