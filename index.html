@@ -602,6 +602,146 @@ canvas.pace-canvas { width: 100%; display: block; }
   color: var(--race); opacity: 0.6; margin-top: 4px;
   text-align: center; letter-spacing: 0.08em; text-transform: uppercase;
 }
+
+/* ═══ FAB — FREE SESSION ═══ */
+.fab {
+  position: fixed;
+  bottom: calc(var(--safe-bottom) + 72px);
+  right: 18px;
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #000;
+  font-size: 1.6rem; font-weight: 300;
+  border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 16px rgba(245,158,11,0.4);
+  z-index: 150;
+  transition: transform 0.15s, box-shadow 0.15s;
+  line-height: 1;
+}
+.fab:active { transform: scale(0.92); box-shadow: 0 2px 8px rgba(245,158,11,0.3); }
+
+/* ═══ FREE SESSION MODAL ═══ */
+.fs-modal-overlay {
+  position: fixed; inset: 0; z-index: 400;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  display: none; align-items: flex-end; justify-content: center;
+}
+.fs-modal-overlay.open { display: flex; }
+.fs-modal-sheet {
+  width: 100%; max-width: 480px;
+  background: var(--surface);
+  border-radius: 16px 16px 0 0;
+  padding: 0 0 calc(var(--safe-bottom) + 16px);
+  max-height: 92vh; overflow-y: auto;
+}
+.fs-handle { width: 36px; height: 4px; background: var(--border2); border-radius: 2px; margin: 12px auto 0; }
+.fs-header {
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.fs-title { font-family: 'Barlow Condensed', sans-serif; font-size: 1.2rem; font-weight: 700; }
+.fs-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 14px; }
+.fs-field label {
+  display: block;
+  font-family: 'DM Mono', monospace; font-size: 9px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 6px;
+}
+.fs-field input[type="text"],
+.fs-field input[type="date"],
+.fs-field textarea,
+.fs-field select {
+  width: 100%; background: var(--surface2);
+  border: 1px solid var(--border2); border-radius: 8px;
+  padding: 10px 12px; color: var(--text);
+  font-family: 'DM Mono', monospace; font-size: 16px;
+  resize: none; line-height: 1.5;
+  -webkit-appearance: none; appearance: none;
+}
+.fs-field select option { background: var(--surface2); }
+.fs-row { display: flex; gap: 10px; }
+.fs-row .fs-field { flex: 1; }
+.type-pills {
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.type-pill {
+  padding: 6px 12px; border-radius: 20px;
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  font-family: 'DM Mono', monospace; font-size: 10px;
+  letter-spacing: 0.05em; color: var(--muted);
+  cursor: pointer; transition: all 0.15s;
+  user-select: none; -webkit-user-select: none;
+}
+.type-pill.selected-easy     { background: rgba(107,114,128,0.2); border-color: var(--easy); color: var(--easy); }
+.type-pill.selected-zone2    { background: rgba(34,197,94,0.15); border-color: var(--ph1); color: var(--ph1); }
+.type-pill.selected-tempo    { background: rgba(59,130,246,0.15); border-color: var(--tempo); color: var(--tempo); }
+.type-pill.selected-interval { background: rgba(34,197,94,0.15); border-color: var(--interval); color: var(--interval); }
+.type-pill.selected-long     { background: rgba(245,158,11,0.15); border-color: var(--long); color: var(--long); }
+.type-pill.selected-swim     { background: rgba(14,165,233,0.15); border-color: #0ea5e9; color: #0ea5e9; }
+.type-pill.selected-bike     { background: rgba(168,85,247,0.15); border-color: #a855f7; color: #a855f7; }
+.type-pill.selected-strength { background: rgba(251,191,36,0.15); border-color: #fbbf24; color: #fbbf24; }
+.type-pill.selected-other    { background: rgba(148,163,184,0.15); border-color: #94a3b8; color: #94a3b8; }
+.rpe-row {
+  display: flex; gap: 6px;
+}
+.rpe-btn {
+  flex: 1; padding: 8px 4px; border-radius: 6px;
+  border: 1px solid var(--border2); background: var(--surface2);
+  font-family: 'Barlow Condensed', sans-serif; font-size: 1rem; font-weight: 600;
+  color: var(--muted); cursor: pointer; text-align: center;
+  transition: all 0.15s;
+}
+.rpe-btn.selected { background: var(--accent); border-color: var(--accent); color: #000; }
+.fs-footer { display: flex; gap: 8px; padding: 0 16px; margin-top: 4px; }
+.fs-btn {
+  flex: 1; padding: 13px; border-radius: 10px;
+  font-family: 'DM Mono', monospace; font-size: 11px;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  cursor: pointer; border: none; font-weight: 500;
+}
+.fs-btn.cancel { background: var(--surface2); color: var(--muted); }
+.fs-btn.save   { background: var(--accent); color: #000; }
+
+/* ═══ EXTRA SESSIONS IN PLAN VIEW ═══ */
+.extra-session-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(245,158,11,0.04);
+}
+.extra-session-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  flex-shrink: 0;
+}
+.extra-session-info { flex: 1; min-width: 0; }
+.extra-session-name {
+  font-size: 12px; font-weight: 500; color: var(--muted);
+}
+.extra-session-meta {
+  font-family: 'DM Mono', monospace; font-size: 9px;
+  color: var(--dim); margin-top: 1px;
+}
+.extra-session-delete {
+  font-size: 14px; color: var(--dim); cursor: pointer;
+  padding: 4px 6px; background: none; border: none;
+  flex-shrink: 0;
+}
+
+/* ═══ EXTRA SESSIONS IN STATS ═══ */
+.extra-week-summary {
+  display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px;
+}
+.extra-tag {
+  font-family: 'DM Mono', monospace; font-size: 9px;
+  padding: 2px 7px; border-radius: 3px;
+  background: var(--surface2); border: 1px solid var(--border2);
+  color: var(--muted);
+}
 </style>
 </head>
 <body>
@@ -833,6 +973,91 @@ canvas.pace-canvas { width: 100%; display: block; }
           "VDOT 55. You belong here."
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- FAB -->
+<button class="fab" onclick="openFreeSession()" title="Log extra session">+</button>
+
+<!-- FREE SESSION MODAL -->
+<div class="fs-modal-overlay" id="fsOverlay" onclick="closeFsOutside(event)">
+  <div class="fs-modal-sheet">
+    <div class="fs-handle"></div>
+    <div class="fs-header">
+      <div class="fs-title">Log extra session</div>
+      <button onclick="closeFreeSession()" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;">×</button>
+    </div>
+    <div class="fs-body">
+
+      <div class="fs-field">
+        <label>Date</label>
+        <input type="date" id="fsDate">
+      </div>
+
+      <div class="fs-field">
+        <label>Session type</label>
+        <div class="type-pills" id="fsTypePills">
+          <div class="type-pill" data-type="easy"     onclick="selectFsType('easy')">Easy run</div>
+          <div class="type-pill" data-type="zone2"    onclick="selectFsType('zone2')">Zone 2</div>
+          <div class="type-pill" data-type="tempo"    onclick="selectFsType('tempo')">Tempo</div>
+          <div class="type-pill" data-type="interval" onclick="selectFsType('interval')">Intervals</div>
+          <div class="type-pill" data-type="long"     onclick="selectFsType('long')">Long run</div>
+          <div class="type-pill" data-type="bike"     onclick="selectFsType('bike')">Bike</div>
+          <div class="type-pill" data-type="swim"     onclick="selectFsType('swim')">Swim</div>
+          <div class="type-pill" data-type="strength" onclick="selectFsType('strength')">Strength</div>
+          <div class="type-pill" data-type="other"    onclick="selectFsType('other')">Other</div>
+        </div>
+      </div>
+
+      <div class="fs-row">
+        <div class="fs-field">
+          <label>Distance (km)</label>
+          <input type="text" id="fsDist" placeholder="e.g. 8.5" inputmode="decimal">
+        </div>
+        <div class="fs-field">
+          <label>Duration (min)</label>
+          <input type="text" id="fsDur" placeholder="e.g. 45" inputmode="decimal">
+        </div>
+      </div>
+
+      <div class="fs-row">
+        <div class="fs-field">
+          <label>Avg pace (/km)</label>
+          <input type="text" id="fsPace" placeholder="e.g. 5:12">
+        </div>
+        <div class="fs-field">
+          <label>Avg HR (bpm)</label>
+          <input type="text" id="fsHr" placeholder="e.g. 138" inputmode="decimal">
+        </div>
+      </div>
+
+      <div class="fs-field">
+        <label>Perceived effort (RPE 1–10)</label>
+        <div class="rpe-row" id="fsRpeRow">
+          <div class="rpe-btn" onclick="selectRpe(1)">1</div>
+          <div class="rpe-btn" onclick="selectRpe(2)">2</div>
+          <div class="rpe-btn" onclick="selectRpe(3)">3</div>
+          <div class="rpe-btn" onclick="selectRpe(4)">4</div>
+          <div class="rpe-btn" onclick="selectRpe(5)">5</div>
+          <div class="rpe-btn" onclick="selectRpe(6)">6</div>
+          <div class="rpe-btn" onclick="selectRpe(7)">7</div>
+          <div class="rpe-btn" onclick="selectRpe(8)">8</div>
+          <div class="rpe-btn" onclick="selectRpe(9)">9</div>
+          <div class="rpe-btn" onclick="selectRpe(10)">10</div>
+        </div>
+      </div>
+
+      <div class="fs-field">
+        <label>Notes</label>
+        <textarea id="fsNote" rows="2" placeholder="e.g. Zone 2 recovery ride, felt fresh, good cadence"></textarea>
+      </div>
+
+    </div>
+    <div class="fs-footer">
+      <button class="fs-btn cancel" onclick="closeFreeSession()">Cancel</button>
+      <button class="fs-btn save" onclick="saveFreeSession()">Save session</button>
     </div>
   </div>
 </div>
@@ -1656,6 +1881,7 @@ function renderCountdown() {
   drawReadinessChart();
   drawHrStatsDashboard();
   updateLastExportDate();
+  renderExtraSessionsStats();
 }
 
 function renderReadiness() {
@@ -2206,6 +2432,234 @@ function calcWeekActualKm(wi) {
   return total > 0 ? Math.round(total * 10) / 10 : null;
 }
 
+
+// ═══════════════════════════════════════════════════════════
+// FREE SESSION LOGGING
+// ═══════════════════════════════════════════════════════════
+
+const TYPE_COLORS = {
+  easy: '#6b7280', zone2: '#22c55e', tempo: '#3b82f6',
+  interval: '#22c55e', long: '#f59e0b', bike: '#a855f7',
+  swim: '#0ea5e9', strength: '#fbbf24', other: '#94a3b8'
+};
+
+const TYPE_LABELS = {
+  easy: 'Easy run', zone2: 'Zone 2', tempo: 'Tempo',
+  interval: 'Intervals', long: 'Long run', bike: 'Bike',
+  swim: 'Swim', strength: 'Strength', other: 'Other'
+};
+
+let fsSelectedType = null;
+let fsSelectedRpe = null;
+let fsEditId = null;
+
+function openFreeSession(editId) {
+  fsEditId = editId || null;
+  fsSelectedType = null;
+  fsSelectedRpe = null;
+
+  // Default date to today
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('fsDate').value = today;
+
+  // Clear fields
+  ['fsDist','fsDur','fsPace','fsHr','fsNote'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+
+  // Reset type pills
+  document.querySelectorAll('.type-pill').forEach(p => p.className = 'type-pill');
+
+  // Reset RPE
+  document.querySelectorAll('.rpe-btn').forEach(b => b.classList.remove('selected'));
+
+  // If editing, pre-fill
+  if (editId) {
+    const sess = (state.freeSessions || []).find(s => s.id === editId);
+    if (sess) {
+      document.getElementById('fsDate').value = sess.date || today;
+      document.getElementById('fsDist').value = sess.dist || '';
+      document.getElementById('fsDur').value = sess.dur || '';
+      document.getElementById('fsPace').value = sess.pace || '';
+      document.getElementById('fsHr').value = sess.hr || '';
+      document.getElementById('fsNote').value = sess.note || '';
+      if (sess.type) selectFsType(sess.type);
+      if (sess.rpe) selectRpe(sess.rpe);
+    }
+  }
+
+  document.getElementById('fsOverlay').classList.add('open');
+}
+
+function closeFreeSession() {
+  document.getElementById('fsOverlay').classList.remove('open');
+  fsEditId = null;
+}
+
+function closeFsOutside(e) {
+  if (e.target === document.getElementById('fsOverlay')) closeFreeSession();
+}
+
+function selectFsType(type) {
+  fsSelectedType = type;
+  document.querySelectorAll('.type-pill').forEach(p => {
+    p.className = 'type-pill' + (p.dataset.type === type ? ' selected-' + type : '');
+  });
+}
+
+function selectRpe(n) {
+  fsSelectedRpe = n;
+  document.querySelectorAll('.rpe-btn').forEach((b, i) => {
+    b.classList.toggle('selected', i + 1 === n);
+  });
+}
+
+function saveFreeSession() {
+  const date = document.getElementById('fsDate').value;
+  if (!date) { alert('Please pick a date'); return; }
+  if (!fsSelectedType) { alert('Please pick a session type'); return; }
+
+  const sess = {
+    id: fsEditId || ('fs_' + Date.now()),
+    date,
+    type: fsSelectedType,
+    dist: document.getElementById('fsDist').value.trim(),
+    dur: document.getElementById('fsDur').value.trim(),
+    pace: document.getElementById('fsPace').value.trim(),
+    hr: document.getElementById('fsHr').value.trim(),
+    rpe: fsSelectedRpe,
+    note: document.getElementById('fsNote').value.trim(),
+    loggedAt: new Date().toISOString()
+  };
+
+  if (!state.freeSessions) state.freeSessions = [];
+
+  if (fsEditId) {
+    const idx = state.freeSessions.findIndex(s => s.id === fsEditId);
+    if (idx > -1) state.freeSessions[idx] = sess;
+  } else {
+    state.freeSessions.push(sess);
+  }
+
+  save();
+  closeFreeSession();
+  renderExtraSessions();
+  if (currentView === 'countdown') renderCountdown();
+}
+
+function deleteFreeSession(id) {
+  if (!confirm('Delete this session?')) return;
+  state.freeSessions = (state.freeSessions || []).filter(s => s.id !== id);
+  save();
+  renderExtraSessions();
+  if (currentView === 'countdown') renderCountdown();
+}
+
+function getWeekIdxForDate(dateStr) {
+  const d = new Date(dateStr); d.setHours(0,0,0,0);
+  let found = -1;
+  for (let i = PLAN.length - 1; i >= 0; i--) {
+    const s = new Date(PLAN[i].startDate); s.setHours(0,0,0,0);
+    if (d >= s) { found = i; break; }
+  }
+  return found;
+}
+
+function renderExtraSessions() {
+  // Remove all existing extra session rows from plan view
+  document.querySelectorAll('.extra-session-row').forEach(el => el.remove());
+
+  const sessions = (state.freeSessions || []).slice().sort((a,b) => a.date.localeCompare(b.date));
+
+  sessions.forEach(sess => {
+    const wi = getWeekIdxForDate(sess.date);
+    if (wi < 0) return; // before plan start
+
+    // Find the week card
+    const weekCard = document.getElementById('wk-' + wi);
+    if (!weekCard) return;
+
+    const color = TYPE_COLORS[sess.type] || '#94a3b8';
+    const label = TYPE_LABELS[sess.type] || sess.type;
+
+    const parts = [];
+    if (sess.dist) parts.push(sess.dist + ' km');
+    if (sess.dur) parts.push(sess.dur + ' min');
+    if (sess.hr) parts.push('♥ ' + sess.hr);
+    if (sess.rpe) parts.push('RPE ' + sess.rpe);
+    const meta = parts.join(' · ') || sess.note || '';
+
+    const row = document.createElement('div');
+    row.className = 'extra-session-row';
+    row.id = 'esr-' + sess.id;
+    row.innerHTML = `
+      <div class="extra-session-dot" style="background:${color}"></div>
+      <div class="extra-session-info" onclick="openFreeSession('${sess.id}')">
+        <div class="extra-session-name" style="color:${color}">${label} — ${sess.date.slice(5)}</div>
+        <div class="extra-session-meta">${meta}</div>
+      </div>
+      <button class="extra-session-delete" onclick="deleteFreeSession('${sess.id}')">×</button>
+    `;
+
+    // Insert after the week header, before sessions list
+    const sessionsList = document.getElementById('sl-' + wi);
+    if (sessionsList) {
+      weekCard.insertBefore(row, sessionsList);
+    }
+  });
+}
+
+// Extra sessions summary for stats dashboard
+function renderExtraSessionsStats() {
+  const container = document.getElementById('extraSessionsStats');
+  if (!container) return;
+
+  const sessions = (state.freeSessions || []).slice().sort((a,b) => b.date.localeCompare(a.date));
+  if (sessions.length === 0) {
+  container.innerHTML = `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--dim);">No extra sessions logged yet — tap + to add one.</div>`;
+    return;
+  }
+
+  // Group by week
+  const byWeek = {};
+  sessions.forEach(sess => {
+    const wi = getWeekIdxForDate(sess.date);
+    const key = wi >= 0 ? 'Wk ' + (wi+1) : sess.date.slice(0,7);
+    if (!byWeek[key]) byWeek[key] = [];
+    byWeek[key].push(sess);
+  });
+
+  let html = '';
+  Object.entries(byWeek).forEach(([week, wSessions]) => {
+    html += `<div style="margin-bottom:12px;">
+      <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.08em;color:var(--dim);text-transform:uppercase;margin-bottom:6px;">${week}</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">`;
+    wSessions.forEach(sess => {
+      const color = TYPE_COLORS[sess.type] || '#94a3b8';
+      const label = TYPE_LABELS[sess.type] || sess.type;
+      const parts = [];
+      if (sess.dist) parts.push(sess.dist + ' km');
+      if (sess.dur) parts.push(sess.dur + ' min');
+      if (sess.pace) parts.push(sess.pace + '/km');
+      if (sess.hr) parts.push('♥ ' + sess.hr + ' bpm');
+      if (sess.rpe) parts.push('RPE ' + sess.rpe);
+      html += `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;cursor:pointer;" onclick="openFreeSession('${sess.id}')">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:3px;">
+          <div style="width:7px;height:7px;border-radius:50%;background:${color};flex-shrink:0;"></div>
+          <span style="font-size:13px;font-weight:500;color:${color};">${label}</span>
+          <span style="margin-left:auto;font-family:'DM Mono',monospace;font-size:9px;color:var(--dim);">${sess.date.slice(5)}</span>
+        </div>
+        ${parts.length ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);padding-left:14px;">${parts.join(' · ')}</div>` : ''}
+        ${sess.note ? `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);padding-left:14px;margin-top:2px;font-style:italic;">${sess.note}</div>` : ''}
+      </div>`;
+    });
+    html += '</div></div>';
+  });
+
+  container.innerHTML = html;
+}
+
 // ═══════════════════════════════════════════════════════════
 // BACKUP — EXPORT / IMPORT
 // ═══════════════════════════════════════════════════════════
@@ -2312,6 +2766,7 @@ buildPlan();
 updateHeader();
 initRaceChecks();
 updateLastExportDate();
+renderExtraSessions();
 
 // Auto-show race day view on race day
 if (isRaceDay()) showView('race');
