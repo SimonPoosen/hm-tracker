@@ -678,7 +678,7 @@ canvas.pace-canvas { width: 100%; display: block; }
   user-select: none; -webkit-user-select: none;
 }
 .type-pill.selected-easy     { background: rgba(107,114,128,0.2); border-color: var(--easy); color: var(--easy); }
-.type-pill.selected-zone2    { background: rgba(34,197,94,0.15); border-color: var(--ph1); color: var(--ph1); }
+.type-pill.selected-zone2    { background: rgba(6,182,212,0.15); border-color: #06b6d4; color: #06b6d4; }
 .type-pill.selected-tempo    { background: rgba(59,130,246,0.15); border-color: var(--tempo); color: var(--tempo); }
 .type-pill.selected-interval { background: rgba(34,197,94,0.15); border-color: var(--interval); color: var(--interval); }
 .type-pill.selected-long     { background: rgba(245,158,11,0.15); border-color: var(--long); color: var(--long); }
@@ -1781,7 +1781,7 @@ function drawHrStatsDashboard() {
 
   // Add free sessions
   const freeColor2 = {
-    easy:'#6b7280', zone2:'#22c55e', long:'#f59e0b',
+    easy:'#6b7280', zone2:'#06b6d4', long:'#f59e0b',
     tempo:'#3b82f6', interval:'#22c55e', race:'#ef4444',
     strength:'#fbbf24', other:'#94a3b8'
   };
@@ -2058,7 +2058,7 @@ function collectHrData() {
     interval:'#22c55e', hm:'#3b82f6', mixed_long:'#ef4444', race:'#ef4444'
   };
   const freeColor = {
-    easy:'#6b7280', zone2:'#22c55e', long:'#f59e0b',
+    easy:'#6b7280', zone2:'#06b6d4', long:'#f59e0b',
     tempo:'#3b82f6', interval:'#22c55e', race:'#ef4444',
     strength:'#fbbf24', other:'#94a3b8'
   };
@@ -2495,7 +2495,7 @@ function calcWeekActualKm(wi) {
 // ═══════════════════════════════════════════════════════════
 
 const TYPE_COLORS = {
-  easy: '#6b7280', zone2: '#22c55e', long: '#f59e0b',
+  easy: '#6b7280', zone2: '#06b6d4', long: '#f59e0b',
   tempo: '#3b82f6', interval: '#22c55e', race: '#ef4444',
   strength: '#fbbf24', other: '#94a3b8'
 };
