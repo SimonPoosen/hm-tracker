@@ -1011,27 +1011,10 @@ canvas.pace-canvas { width: 100%; display: block; }
         </div>
       </div>
 
-      <div class="fs-row">
-        <div class="fs-field">
-          <label>Distance (km)</label>
-          <input type="text" id="fsDist" placeholder="e.g. 8.5" inputmode="decimal">
-        </div>
-        <div class="fs-field">
-          <label>Duration (min)</label>
-          <input type="text" id="fsDur" placeholder="e.g. 45" inputmode="decimal">
-        </div>
-      </div>
-
-      <div class="fs-row">
-        <div class="fs-field">
-          <label>Avg pace (/km)</label>
-          <input type="text" id="fsPace" placeholder="e.g. 5:12">
-        </div>
-        <div class="fs-field">
-          <label>Avg HR (bpm)</label>
-          <input type="text" id="fsHr" placeholder="e.g. 138" inputmode="decimal">
-        </div>
-      </div>
+      <div class="fs-field" id="fsDistField"></div>
+      <div class="fs-field" id="fsDurField"></div>
+      <div class="fs-field" id="fsPaceField"></div>
+      <div class="fs-field" id="fsHrField"></div>
 
       <div class="fs-field">
         <label>Perceived effort (RPE 1–10)</label>
