@@ -1000,12 +1000,11 @@ canvas.pace-canvas { width: 100%; display: block; }
         <label>Session type</label>
         <div class="type-pills" id="fsTypePills">
           <div class="type-pill" data-type="easy"     onclick="selectFsType('easy')">Easy run</div>
-          <div class="type-pill" data-type="zone2"    onclick="selectFsType('zone2')">Zone 2</div>
+          <div class="type-pill" data-type="zone2"    onclick="selectFsType('zone2')">Zone 2 run</div>
+          <div class="type-pill" data-type="long"     onclick="selectFsType('long')">Long run</div>
           <div class="type-pill" data-type="tempo"    onclick="selectFsType('tempo')">Tempo</div>
           <div class="type-pill" data-type="interval" onclick="selectFsType('interval')">Intervals</div>
-          <div class="type-pill" data-type="long"     onclick="selectFsType('long')">Long run</div>
-          <div class="type-pill" data-type="bike"     onclick="selectFsType('bike')">Bike</div>
-          <div class="type-pill" data-type="swim"     onclick="selectFsType('swim')">Swim</div>
+          <div class="type-pill" data-type="race"     onclick="selectFsType('race')">Race / TT</div>
           <div class="type-pill" data-type="strength" onclick="selectFsType('strength')">Strength</div>
           <div class="type-pill" data-type="other"    onclick="selectFsType('other')">Other</div>
         </div>
@@ -1768,7 +1767,7 @@ function drawHrStatsDashboard() {
     interval:'#22c55e', mixed_long:'#ef4444', race:'#ef4444'
   };
 
-  // Build week buckets: { week, pts: [{hr, color}] }
+  // Build week buckets from plan sessions
   const weekData = {};
   PLAN.forEach((w, wi) => {
     w.sessions.forEach((s, si) => {
@@ -1776,8 +1775,23 @@ function drawHrStatsDashboard() {
       const dat = getSessionData(wi, si);
       if (!dat.avgHr) return;
       if (!weekData[w.week]) weekData[w.week] = [];
-      weekData[w.week].push({ hr: dat.avgHr, color: typeColor[s.logType] || '#ef4444' });
+      weekData[w.week].push({ hr: parseInt(dat.avgHr), color: typeColor[s.logType] || '#ef4444' });
     });
+  });
+
+  // Add free sessions
+  const freeColor2 = {
+    easy:'#6b7280', zone2:'#22c55e', long:'#f59e0b',
+    tempo:'#3b82f6', interval:'#22c55e', race:'#ef4444',
+    strength:'#fbbf24', other:'#94a3b8'
+  };
+  (state.freeSessions || []).forEach(sess => {
+    if (!sess.hr) return;
+    const wi = getWeekIdxForDate(sess.date);
+    if (wi < 0) return;
+    const wk = PLAN[wi].week;
+    if (!weekData[wk]) weekData[wk] = [];
+    weekData[wk].push({ hr: parseInt(sess.hr), color: freeColor2[sess.type] || '#94a3b8' });
   });
 
   const W = canvas.parentElement.clientWidth || 300;
@@ -2039,16 +2053,35 @@ function renderCharts() {
 }
 
 function collectHrData() {
-  const typeColor = { easy:'#ef4444', long:'#ef4444', tempo:'#3b82f6', interval:'#22c55e', hm:'#3b82f6', mixed_long:'#ef4444', race:'#ef4444' };
+  const typeColor = {
+    easy:'#ef4444', long:'#ef4444', tempo:'#3b82f6',
+    interval:'#22c55e', hm:'#3b82f6', mixed_long:'#ef4444', race:'#ef4444'
+  };
+  const freeColor = {
+    easy:'#6b7280', zone2:'#22c55e', long:'#f59e0b',
+    tempo:'#3b82f6', interval:'#22c55e', race:'#ef4444',
+    strength:'#fbbf24', other:'#94a3b8'
+  };
   const pts = [];
+
+  // Plan sessions
   PLAN.forEach((w, wi) => {
     w.sessions.forEach((s, si) => {
       if (s.type === 'rest') return;
       const dat = getSessionData(wi, si);
       if (!dat.avgHr) return;
-      pts.push({ week: w.week, hr: dat.avgHr, color: typeColor[s.logType] || '#ef4444', day: s.day });
+      pts.push({ week: w.week, hr: parseInt(dat.avgHr), color: typeColor[s.logType] || '#ef4444' });
     });
   });
+
+  // Free sessions
+  (state.freeSessions || []).forEach(sess => {
+    if (!sess.hr) return;
+    const wi = getWeekIdxForDate(sess.date);
+    if (wi < 0) return;
+    pts.push({ week: PLAN[wi].week, hr: parseInt(sess.hr), color: freeColor[sess.type] || '#94a3b8', free: true });
+  });
+
   return pts;
 }
 
@@ -2101,6 +2134,8 @@ function drawHrChart() {
 
 function collectData(logType) {
   const pts = [];
+
+  // Plan sessions
   PLAN.forEach((w, wi) => {
     w.sessions.forEach((s, si) => {
       if (s.logType !== logType) return;
@@ -2110,9 +2145,31 @@ function collectData(logType) {
       if (logType === 'tempo' && dat.tempoPace) pace = dat.tempoPace;
       if (logType === 'easy') pace = dat.avgPace || null;
       const sec = paceToSec(pace);
-      if (sec !== null) pts.push({ week: w.week, wi, sec });
+      if (sec !== null) pts.push({ week: w.week, wi, sec, free: false });
     });
   });
+
+  // Free sessions — map free session types to chart logTypes
+  // easy logType chart: easy, zone2, long free sessions
+  // tempo logType chart: tempo free sessions
+  // interval logType chart: interval free sessions
+  const freeTypeMap = {
+    easy:     ['easy', 'zone2', 'long'],  // all easy-effort runs go on easy chart
+    tempo:    ['tempo'],
+    interval: ['interval'],
+  };
+  const validFreeTypes = freeTypeMap[logType] || [];
+  (state.freeSessions || []).forEach(sess => {
+    if (!sess.pace) return;
+    if (!validFreeTypes.includes(sess.type)) return;
+    const wi = getWeekIdxForDate(sess.date);
+    if (wi < 0) return;
+    const sec = paceToSec(sess.pace);
+    if (sec !== null) pts.push({ week: PLAN[wi].week, wi, sec, free: true });
+  });
+
+  // Sort by week
+  pts.sort((a, b) => a.week - b.week);
   return pts;
 }
 
@@ -2166,7 +2223,12 @@ function drawPaceChart(canvasId, pts, color, targetFast, targetSlow, lowerIsBett
   pts.forEach(p => {
     const x = toX(p.week), y = toY(p.sec);
     ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI*2);
-    ctx.fillStyle = color; ctx.fill();
+    if (p.free) {
+      // Free session — open circle with colour stroke
+      ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.stroke();
+    } else {
+      ctx.fillStyle = color; ctx.fill();
+    }
     ctx.fillStyle = '#333'; ctx.font = '7px DM Mono,monospace';
     ctx.fillText(secToPace(p.sec), x, y - 8);
     ctx.fillStyle = '#555'; ctx.font = '8px DM Mono,monospace';
@@ -2433,15 +2495,15 @@ function calcWeekActualKm(wi) {
 // ═══════════════════════════════════════════════════════════
 
 const TYPE_COLORS = {
-  easy: '#6b7280', zone2: '#22c55e', tempo: '#3b82f6',
-  interval: '#22c55e', long: '#f59e0b', bike: '#a855f7',
-  swim: '#0ea5e9', strength: '#fbbf24', other: '#94a3b8'
+  easy: '#6b7280', zone2: '#22c55e', long: '#f59e0b',
+  tempo: '#3b82f6', interval: '#22c55e', race: '#ef4444',
+  strength: '#fbbf24', other: '#94a3b8'
 };
 
 const TYPE_LABELS = {
-  easy: 'Easy run', zone2: 'Zone 2', tempo: 'Tempo',
-  interval: 'Intervals', long: 'Long run', bike: 'Bike',
-  swim: 'Swim', strength: 'Strength', other: 'Other'
+  easy: 'Easy run', zone2: 'Zone 2 run', long: 'Long run',
+  tempo: 'Tempo', interval: 'Intervals', race: 'Race / TT',
+  strength: 'Strength', other: 'Other'
 };
 
 let fsSelectedType = null;
@@ -2554,8 +2616,21 @@ function saveFreeSession() {
   }
 
   save();
+
+  // Recalculate weekly km for the affected week and update plan view header
+  const affectedWi = getWeekIdxForDate(sess.date);
+  if (affectedWi >= 0) {
+    const autoKm = calcWeekActualKm(affectedWi);
+    if (!state['wkm_manual_' + affectedWi]) {
+      state['wkm_' + affectedWi] = autoKm !== null ? String(autoKm) : null;
+    }
+    save();
+  }
+
   closeFreeSession();
   renderExtraSessions();
+  buildPlan();          // refreshes km display in plan week header
+  updateHeader();       // refreshes overall progress
   if (currentView === 'countdown') renderCountdown();
 }
 
