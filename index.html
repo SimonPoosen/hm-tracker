@@ -2421,14 +2421,26 @@ function parseSessionKm(name) {
 }
 
 function calcWeekActualKm(wi) {
-  // Sum km of all ticked non-rest sessions in the week
   const w = PLAN[wi];
   let total = 0;
+
+  // Ticked plan sessions
   w.sessions.forEach((s, si) => {
     if (s.type === 'rest') return;
     if (!isChecked(wi, si)) return;
     total += parseSessionKm(s.name);
   });
+
+  // Free sessions in this week
+  const weekStart = new Date(w.startDate + 'T00:00:00');
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  (state.freeSessions || []).forEach(sess => {
+    if (!sess.dist) return;
+    const d = new Date(sess.date + 'T12:00:00');
+    if (d >= weekStart && d < weekEnd) total += parseFloat(sess.dist) || 0;
+  });
+
   return total > 0 ? Math.round(total * 10) / 10 : null;
 }
 
@@ -2462,34 +2474,39 @@ function openFreeSession(editId) {
   const today = new Date().toISOString().slice(0, 10);
   document.getElementById('fsDate').value = today;
 
-  // Clear fields
-  ['fsDist','fsDur','fsPace','fsHr','fsNote'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
+  // Get existing session data if editing
+  let existing = null;
+  if (editId) {
+    existing = (state.freeSessions || []).find(s => s.id === editId);
+    if (existing) document.getElementById('fsDate').value = existing.date || today;
+  }
 
-  // Reset type pills
+  // Render pickers into placeholder divs
+  document.getElementById('fsDistField').innerHTML = buildDecimalPicker('fsDist', 0, 50, 0.5, existing ? existing.dist : null, 'Distance', 'km');
+  document.getElementById('fsDurField').innerHTML = buildIntPicker('fsDur', 0, 300, existing ? existing.dur : null, 'Duration', 'min');
+  document.getElementById('fsPaceField').innerHTML = buildPicker('fsPace', 3, 8, existing ? existing.pace : null, 'Avg pace');
+  document.getElementById('fsHrField').innerHTML = buildHrPicker('fsHr', existing ? existing.hr : null, 'Avg HR');
+
+  // Reset type pills and RPE
   document.querySelectorAll('.type-pill').forEach(p => p.className = 'type-pill');
-
-  // Reset RPE
   document.querySelectorAll('.rpe-btn').forEach(b => b.classList.remove('selected'));
 
-  // If editing, pre-fill
-  if (editId) {
-    const sess = (state.freeSessions || []).find(s => s.id === editId);
-    if (sess) {
-      document.getElementById('fsDate').value = sess.date || today;
-      document.getElementById('fsDist').value = sess.dist || '';
-      document.getElementById('fsDur').value = sess.dur || '';
-      document.getElementById('fsPace').value = sess.pace || '';
-      document.getElementById('fsHr').value = sess.hr || '';
-      document.getElementById('fsNote').value = sess.note || '';
-      if (sess.type) selectFsType(sess.type);
-      if (sess.rpe) selectRpe(sess.rpe);
-    }
+  if (existing) {
+    document.getElementById('fsNote').value = existing.note || '';
+    if (existing.type) selectFsType(existing.type);
+    if (existing.rpe) selectRpe(existing.rpe);
+  } else {
+    document.getElementById('fsNote').value = '';
   }
 
   document.getElementById('fsOverlay').classList.add('open');
+
+  requestAnimationFrame(() => {
+    initDecimalPicker('fsDist', existing ? existing.dist : null);
+    initIntPicker('fsDur', existing ? existing.dur : null, 0);
+    initPicker('fsPace', 3, existing ? existing.pace : null);
+    initHrPicker('fsHr', existing ? existing.hr : null);
+  });
 }
 
 function closeFreeSession() {
@@ -2524,10 +2541,10 @@ function saveFreeSession() {
     id: fsEditId || ('fs_' + Date.now()),
     date,
     type: fsSelectedType,
-    dist: document.getElementById('fsDist').value.trim(),
-    dur: document.getElementById('fsDur').value.trim(),
-    pace: document.getElementById('fsPace').value.trim(),
-    hr: document.getElementById('fsHr').value.trim(),
+    dist: (() => { const v = getDecimalPickerValue('fsDist'); return v !== null && v > 0 ? String(v) : ''; })(),
+    dur: (() => { const v = getIntPickerValue('fsDur'); return v !== null && v > 0 ? String(v) : ''; })(),
+    pace: getPickerValue('fsPace') || '',
+    hr: (() => { const v = getHrValue('fsHr'); return v !== null ? String(v) : ''; })(),
     rpe: fsSelectedRpe,
     note: document.getElementById('fsNote').value.trim(),
     loggedAt: new Date().toISOString()
@@ -2602,9 +2619,22 @@ function renderExtraSessions() {
       <button class="extra-session-delete" onclick="deleteFreeSession('${sess.id}')">×</button>
     `;
 
-    // Insert after the week header, before sessions list
+    // Find correct day row to insert after
+    const dayAbbr = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const sessDateObj = new Date(sess.date + 'T12:00:00');
+    const sessDay = dayAbbr[sessDateObj.getDay()];
+    const planWeek = PLAN[wi];
+    let insertAfterEl = null;
+    planWeek.sessions.forEach((s, si) => {
+      if (s.day === sessDay) {
+        const rowEl = document.getElementById('sr-' + wi + '-' + si);
+        if (rowEl) insertAfterEl = rowEl;
+      }
+    });
     const sessionsList = document.getElementById('sl-' + wi);
-    if (sessionsList) {
+    if (insertAfterEl && insertAfterEl.parentNode) {
+      insertAfterEl.parentNode.insertBefore(row, insertAfterEl.nextSibling);
+    } else if (sessionsList) {
       weekCard.insertBefore(row, sessionsList);
     }
   });
@@ -2658,6 +2688,84 @@ function renderExtraSessionsStats() {
   });
 
   container.innerHTML = html;
+}
+
+
+// ── Generic int / decimal scroll pickers ─────────────────────────────────────
+function buildIntPicker(id, minVal, maxVal, initVal, label, unit) {
+  const values = [];
+  for (let i = minVal; i <= maxVal; i++) values.push(i);
+  const items = values.map(v => `<div class="pace-picker-item" data-val="${v}">${v}</div>`).join('');
+  return `<div>
+    <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">${label}</div>
+    <div class="pace-picker-wrap">
+      <div class="pace-picker-col" id="${id}">
+        <div class="pace-picker-selector"></div>
+        <div class="pace-picker-scroll" id="${id}-scroll">${items}</div>
+      </div>
+    </div>
+    <div class="pace-picker-label">${unit}</div>
+  </div>`;
+}
+
+function buildDecimalPicker(id, minVal, maxVal, step, initVal, label, unit) {
+  const values = [];
+  for (let v = minVal; v <= maxVal; v = Math.round((v + step) * 10) / 10) values.push(v);
+  const items = values.map(v => `<div class="pace-picker-item" data-val="${v}">${step < 1 ? v.toFixed(1) : v}</div>`).join('');
+  return `<div>
+    <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">${label}</div>
+    <div class="pace-picker-wrap">
+      <div class="pace-picker-col" id="${id}">
+        <div class="pace-picker-selector"></div>
+        <div class="pace-picker-scroll" id="${id}-scroll">${items}</div>
+      </div>
+    </div>
+    <div class="pace-picker-label">${unit}</div>
+  </div>`;
+}
+
+function initIntPicker(id, initVal, minVal) {
+  const scroll = document.getElementById(id + '-scroll');
+  if (!scroll) return;
+  const init = initVal !== null && initVal !== undefined ? parseInt(initVal) : null;
+  const items = scroll.querySelectorAll('.pace-picker-item');
+  if (init !== null) {
+    items.forEach((item, idx) => {
+      if (parseInt(item.dataset.val) === init) scroll.scrollTop = idx * 44;
+    });
+  }
+  scroll.addEventListener('scroll', () => updatePickerHighlight(scroll), { passive: true });
+  updatePickerHighlight(scroll);
+}
+
+function initDecimalPicker(id, initVal) {
+  const scroll = document.getElementById(id + '-scroll');
+  if (!scroll) return;
+  const init = initVal !== null && initVal !== undefined ? parseFloat(initVal) : null;
+  const items = scroll.querySelectorAll('.pace-picker-item');
+  if (init !== null) {
+    items.forEach((item, idx) => {
+      if (Math.abs(parseFloat(item.dataset.val) - init) < 0.01) scroll.scrollTop = idx * 44;
+    });
+  }
+  scroll.addEventListener('scroll', () => updatePickerHighlight(scroll), { passive: true });
+  updatePickerHighlight(scroll);
+}
+
+function getIntPickerValue(id) {
+  const scroll = document.getElementById(id + '-scroll');
+  if (!scroll) return null;
+  const idx = Math.round(scroll.scrollTop / 44);
+  const items = scroll.querySelectorAll('.pace-picker-item');
+  return items[idx] ? parseInt(items[idx].dataset.val) : null;
+}
+
+function getDecimalPickerValue(id) {
+  const scroll = document.getElementById(id + '-scroll');
+  if (!scroll) return null;
+  const idx = Math.round(scroll.scrollTop / 44);
+  const items = scroll.querySelectorAll('.pace-picker-item');
+  return items[idx] ? parseFloat(items[idx].dataset.val) : null;
 }
 
 // ═══════════════════════════════════════════════════════════
