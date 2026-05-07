@@ -1431,6 +1431,9 @@ function buildPlan() {
 
   html += '</div>';
   document.getElementById('planContainer').innerHTML = html;
+
+  // Inject extra sessions into rebuilt DOM
+  if (typeof renderExtraSessions === 'function') renderExtraSessions();
 }
 
 function renderLoggedData(dat, logType) {
@@ -2628,9 +2631,9 @@ function saveFreeSession() {
   }
 
   closeFreeSession();
-  renderExtraSessions();
-  buildPlan();          // refreshes km display in plan week header
-  updateHeader();       // refreshes overall progress
+  buildPlan();          // rebuild plan DOM first
+  renderExtraSessions(); // then inject extra session rows into rebuilt DOM
+  updateHeader();
   if (currentView === 'countdown') renderCountdown();
 }
 
@@ -2638,7 +2641,9 @@ function deleteFreeSession(id) {
   if (!confirm('Delete this session?')) return;
   state.freeSessions = (state.freeSessions || []).filter(s => s.id !== id);
   save();
+  buildPlan();
   renderExtraSessions();
+  updateHeader();
   if (currentView === 'countdown') renderCountdown();
 }
 
@@ -2700,11 +2705,14 @@ function renderExtraSessions() {
         if (rowEl) insertAfterEl = rowEl;
       }
     });
+    // Always insert in the week-card directly (not inside sessions-list)
+    // so extra sessions are visible even when the week is collapsed
     const sessionsList = document.getElementById('sl-' + wi);
-    if (insertAfterEl && insertAfterEl.parentNode) {
-      insertAfterEl.parentNode.insertBefore(row, insertAfterEl.nextSibling);
-    } else if (sessionsList) {
+    if (sessionsList) {
+      // Insert before the sessions-list (always visible in week card)
       weekCard.insertBefore(row, sessionsList);
+    } else {
+      weekCard.appendChild(row);
     }
   });
 }
